@@ -120,16 +120,6 @@
         }
         .card-title { font-size: 11px; font-weight: 800; color: var(--sub-text); margin-top: 0; margin-bottom: 18px; letter-spacing: 2px; text-transform: uppercase; }
         
-        /* 演出中カードのうっすらアナウンス用 */
-        .skip-notice {
-            float: right;
-            font-size: 10px;
-            color: var(--primary);
-            animation: pulse 1s infinite alternate;
-            display: none;
-        }
-        @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
-
         .input-row { display: flex; gap: 14px; margin-bottom: 14px; }
         .input-group { flex: 1; text-align: left; }
         label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; color: var(--sub-text); text-transform: uppercase; letter-spacing: 1px; }
@@ -255,7 +245,7 @@
         </div>
 
         <div class="card" id="normal-result-card" style="display: none; border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 127, 0.25);">
-            <p class="card-title" style="margin:0;"><span id="normal-card-status" style="color: var(--success); letter-spacing: 2px;">SIMULATING...</span><span class="skip-notice" id="normal-skip-notice">TAP TO SKIP</span></p>
+            <p class="card-title" id="normal-card-status" style="color: var(--success); margin: 0; letter-spacing: 2px;">SIMULATING...</p>
             <div class="result-box" id="normal-box-element">
                 <div class="big-num color-win" id="res-count-box"><span id="res-count">0</span> <span style="font-size:22px; font-weight:800; text-shadow:none;">G</span></div>
                 <div class="stat-grid" id="normal-stats-grid" style="visibility: hidden;">
@@ -298,7 +288,7 @@
         </div>
 
         <div class="card" id="rush-result-card" style="display: none; border-color: var(--rush-color); box-shadow: 0 0 30px var(--rush-glow);">
-            <p class="card-title" style="margin:0;"><span id="rush-card-status" style="color: var(--rush-color); letter-spacing: 2px;">RUSHING...</span><span class="skip-notice" id="rush-skip-notice" style="color:var(--rush-color);">TAP TO SKIP</span></p>
+            <p class="card-title" id="rush-card-status" style="color: var(--rush-color); margin: 0; letter-spacing: 2px;">RUSHING...</p>
             <div class="result-box">
                 <div class="big-num color-rush" id="res-rush-box"><span id="res-rush-count">0</span> <span style="font-size:22px; font-weight:800; text-shadow:none;">連</span></div>
             </div>
@@ -349,7 +339,7 @@
             flashScreen.classList.remove('flash-active');
             void flashScreen.offsetWidth; 
             flashScreen.classList.add('flash-active');
-            playPachinkoSound();
+            playPachinkoSound(); // 音声トリガー
         }
 
         // タブ切り替え
@@ -408,66 +398,38 @@
         document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
         document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
 
-        // 演出制御・スキップ用の共通管理オブジェクト
-        let currentAnimation = {
-            isActive: false,
-            skipFn: null
-        };
-
-        // カウントアップ演出アニメーション関数（スキップ対応版）
+        // カウントアップ演出アニメーション関数
         function animateValue(element, start, end, duration, callback) {
             let startTimestamp = null;
-            let requestId = null;
-
-            // スキップされた時に即時実行する関数
-            const forceComplete = () => {
-                if (requestId) window.cancelAnimationFrame(requestId);
-                element.innerText = end.toLocaleString();
-                if (callback) callback();
-            };
-
             const step = (timestamp) => {
                 if (!startTimestamp) startTimestamp = timestamp;
                 const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                // イージングをかけずにリニア（等速）でガガガガッと上げる
                 const current = Math.floor(progress * (end - start) + start);
                 element.innerText = current.toLocaleString();
-                
                 if (progress < 1) {
-                    requestId = window.requestAnimationFrame(step);
+                    window.requestAnimationFrame(step);
                 } else {
                     element.innerText = end.toLocaleString();
                     if (callback) callback();
                 }
             };
-            
-            requestId = window.requestAnimationFrame(step);
-            return forceComplete;
-        };
+            window.requestAnimationFrame(step);
+        }
 
-        // 画面のどこかをタップした時にスキップを発動させる汎用リスナー
-        document.body.addEventListener('click', () => {
-            if (currentAnimation.isActive && typeof currentAnimation.skipFn === 'function') {
-                currentAnimation.skipFn();
-            }
-        });
+        // ボタンの多重クリック防止用フラグ
+        let isSimulating = false;
 
         // ① 通常シミュレーション
-        document.getElementById('btn-run-normal').addEventListener('click', (e) => {
-            // 演出中の場合はスキップを優先させるため、ボタン自体のイベント伝播を防ぐ
-            if (currentAnimation.isActive) {
-                e.stopPropagation();
-                if (currentAnimation.skipFn) currentAnimation.skipFn();
-                return;
-            }
-            
+        document.getElementById('btn-run-normal').addEventListener('click', () => {
+            if (isSimulating) return;
             const stats = updateNormalStats();
             if (!stats) return;
 
-            currentAnimation.isActive = true;
+            isSimulating = true;
             
             // 演出初期化
             document.getElementById('normal-card-status').innerText = "SIMULATING...";
-            document.getElementById('normal-skip-notice').style.display = 'inline';
             document.getElementById('normal-stats-grid').style.visibility = 'hidden';
             document.getElementById('btn-go-to-rush').style.display = 'none';
             document.getElementById('res-count').innerText = "0";
@@ -481,22 +443,19 @@
                 if (count > 200000) break;
             }
 
+            // カウント数の多さに応じて演出時間を可変（MAX 1.2秒）
             const duration = Math.min(400 + (count * 0.5), 1200);
+
             const countSpan = document.getElementById('res-count');
             const countBox = document.getElementById('res-count-box');
             countBox.classList.remove('pop-animation');
 
-            // アニメーションを開始し、戻り値のスキップ関数を保持
-            currentAnimation.skipFn = animateValue(countSpan, 0, count, duration, () => {
-                // すでに演出終了している場合は多重処理をガード
-                if (!currentAnimation.isActive) return;
-                currentAnimation.isActive = false;
-                currentAnimation.skipFn = null;
-
+            animateValue(countSpan, 0, count, duration, () => {
+                // カウントアップ完了（大当たり！）直後のタイミングでフラッシュと音
                 triggerFlash();
                 
+                // ステータスや投資額を遅れて表示
                 document.getElementById('normal-card-status').innerText = "BONUS ENCOUNTERED";
-                document.getElementById('normal-skip-notice').style.display = 'none';
                 
                 const over1000Span = document.getElementById('stat-over1000');
                 if (count > 1000) {
@@ -512,31 +471,25 @@
                 document.getElementById('btn-go-to-rush').style.display = 'block';
                 
                 countBox.classList.add('pop-animation');
+                isSimulating = false;
             });
         });
 
-        document.getElementById('btn-go-to-rush').addEventListener('click', (e) => {
-            e.stopPropagation(); // タップによる誤作動防止
+        document.getElementById('btn-go-to-rush').addEventListener('click', () => {
             switchTab('rush');
             document.getElementById('rush-result-card').style.display = 'none';
         });
 
         // ② RUSHシミュレーション
-        document.getElementById('btn-run-rush').addEventListener('click', (e) => {
-            if (currentAnimation.isActive) {
-                e.stopPropagation();
-                if (currentAnimation.skipFn) currentAnimation.skipFn();
-                return;
-            }
-            
+        document.getElementById('btn-run-rush').addEventListener('click', () => {
+            if (isSimulating) return;
             const stats = updateRushStats();
             if (!stats) return;
 
-            currentAnimation.isActive = true;
+            isSimulating = true;
 
             // 演出初期化
             document.getElementById('rush-card-status').innerText = "RUSHING...";
-            document.getElementById('rush-skip-notice').style.display = 'inline';
             document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
             document.getElementById('res-rush-count').innerText = "0";
             document.getElementById('rush-result-card').style.display = 'block';
@@ -551,7 +504,9 @@
             const singlePayout = parseInt(payoutInput.value) || 0;
             const totalPayout = rushCount * singlePayout;
 
+            // 連チャン数に応じた演出時間（MAX 1.5秒）
             const duration = Math.min(300 + (rushCount * 30), 1500);
+
             const rushCountSpan = document.getElementById('res-rush-count');
             const rushBox = document.getElementById('res-rush-box');
             const payoutBox = document.getElementById('res-payout-box');
@@ -559,15 +514,11 @@
             rushBox.classList.remove('rush-count-animation');
             payoutBox.classList.remove('rush-count-animation');
 
-            currentAnimation.skipFn = animateValue(rushCountSpan, 0, rushCount, duration, () => {
-                if (!currentAnimation.isActive) return;
-                currentAnimation.isActive = false;
-                currentAnimation.skipFn = null;
-
+            animateValue(rushCountSpan, 0, rushCount, duration, () => {
+                // 連チャン終了（リザルト画面確定）直後のタイミングでフラッシュと音
                 triggerFlash();
                 
                 document.getElementById('rush-card-status').innerText = "RUSH RESULT";
-                document.getElementById('rush-skip-notice').style.display = 'none';
                 document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
                 document.getElementById('rush-payout-box-element').style.visibility = 'visible';
                 
@@ -575,6 +526,8 @@
                 payoutBox.style.setProperty('--i', '2');
                 rushBox.classList.add('rush-count-animation');
                 payoutBox.classList.add('rush-count-animation');
+                
+                isSimulating = false;
             });
         });
 
