@@ -6,184 +6,229 @@
     <title>PACHINKO SIMULATOR</title>
     <style>
         :root {
-            --bg: #090a0f;
-            --card-bg: rgba(22, 24, 37, 0.7);
+            --bg: #05060a;
+            --card-bg: rgba(16, 18, 30, 0.75);
             --text: #f0f2f5;
-            --sub-text: #787f95;
-            --border: rgba(255, 255, 255, 0.08);
+            --sub-text: #6c738a;
+            --border: rgba(255, 255, 255, 0.06);
             
-            /* ネオンカラー */
+            /* フラッシュ＆ネオン */
             --primary: #00bfff;
-            --primary-glow: rgba(0, 191, 255, 0.4);
+            --primary-glow: rgba(0, 191, 255, 0.6);
             --success: #00ff7f;
-            --success-glow: rgba(0, 255, 127, 0.4);
-            --rush-color: #ff3e6c;
-            --rush-glow: rgba(255, 62, 108, 0.4);
+            --success-glow: rgba(0, 255, 127, 0.6);
+            --rush-color: #ff0055;
+            --rush-glow: rgba(255, 0, 85, 0.6);
             --danger: #ff9900;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg);
-            background-image: radial-gradient(circle at 50% 0%, #16192b 0%, #090a0f 70%);
+            background-image: radial-gradient(circle at 50% 30%, #1a1d36 0%, #05060a 80%);
             color: var(--text);
             padding: 10px;
             margin: 0;
             display: flex;
             justify-content: center;
             min-height: 100vh;
+            overflow-x: hidden;
         }
-        .container { width: 100%; max-width: 440px; }
+        .container { width: 100%; max-width: 440px; position: relative; }
         
         /* タイトル */
         h1 {
-            font-size: 20px;
-            font-weight: 800;
+            font-size: 22px;
+            font-weight: 900;
             text-align: center;
             margin: 15px 0 20px 0;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            background: linear-gradient(90deg, var(--primary), var(--rush-color));
+            background: linear-gradient(90deg, var(--primary), var(--rush-color), var(--primary));
+            background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+        }
+        @keyframes shine {
+            to { background-position: 200% center; }
         }
 
-        /* iOS風セグメントタブ */
+        /* 画面全体の衝撃フラッシュエフェクト */
+        .flash-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .flash-active { animation: screenFlash 0.4s ease-out; }
+        @keyframes screenFlash {
+            0% { opacity: 0.8; background: #fff; }
+            50% { background: var(--rush-color); opacity: 0.4; }
+            100% { opacity: 0; }
+        }
+
+        /* タブスイッチ */
         .tabs {
             display: flex;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            padding: 3px;
-            border-radius: 12px;
+            padding: 4px;
+            border-radius: 14px;
             margin-bottom: 20px;
             border: 1px solid var(--border);
         }
         .tab-btn {
             flex: 1;
-            padding: 10px 0;
-            font-size: 14px;
-            font-weight: 700;
+            padding: 12px 0;
+            font-size: 13px;
+            font-weight: 800;
             text-align: center;
             background: transparent;
             border: none;
-            border-radius: 9px;
+            border-radius: 10px;
             color: var(--sub-text);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             -webkit-tap-highlight-color: transparent;
         }
         .tab-btn.active {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.09);
             color: #ffffff;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
-        #tab-btn-normal.active { border-bottom: 2px solid var(--primary); border-radius: 9px 9px 2px 2px; }
-        #tab-btn-rush.active { border-bottom: 2px solid var(--rush-color); border-radius: 9px 9px 2px 2px; color: var(--rush-color); }
+        #tab-btn-normal.active { border-bottom: 2px solid var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+        #tab-btn-rush.active { border-bottom: 2px solid var(--rush-color); box-shadow: 0 0 15px var(--rush-glow); color: var(--rush-color); }
 
-        /* グラスモフィズムカード */
+        /* カード */
         .card {
             background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 20px;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 18px;
+            padding: 22px;
             margin-bottom: 20px;
             border: 1px solid var(--border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
             box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
         }
-        .card-title { font-size: 13px; font-weight: 700; color: var(--sub-text); margin-top: 0; margin-bottom: 16px; letter-spacing: 1px; }
+        .card-title { font-size: 11px; font-weight: 800; color: var(--sub-text); margin-top: 0; margin-bottom: 18px; letter-spacing: 2px; text-transform: uppercase; }
         
         .input-row { display: flex; gap: 14px; margin-bottom: 14px; }
         .input-group { flex: 1; text-align: left; }
-        label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 6px; color: var(--sub-text); text-transform: uppercase; }
+        label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; color: var(--sub-text); text-transform: uppercase; letter-spacing: 1px; }
         
-        /* インプット */
         input {
             width: 100%;
             padding: 14px;
             box-sizing: border-box;
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 18px;
-            font-weight: bold;
-            background: rgba(0, 0, 0, 0.3);
+            font-weight: 800;
+            background: rgba(0, 0, 0, 0.4);
             color: #ffffff;
             -webkit-appearance: none;
             transition: all 0.2s;
         }
-        input:focus { border-color: var(--primary); background: rgba(0,0,0,0.5); outline: none; box-shadow: 0 0 10px var(--primary-glow); }
+        input:focus { border-color: var(--primary); background: rgba(0,0,0,0.6); outline: none; box-shadow: 0 0 12px var(--primary-glow); }
         
-        /* クイックボタン */
-        .quick-buttons { display: flex; gap: 8px; margin-bottom: 20px; }
+        .quick-buttons { display: flex; gap: 8px; margin-bottom: 22px; }
         .btn-sub {
             flex: 1;
-            padding: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.03);
+            padding: 11px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.02);
             color: var(--primary);
-            border: 1px solid rgba(0, 191, 255, 0.2);
-            border-radius: 8px;
+            border: 1px solid rgba(0, 191, 255, 0.15);
+            border-radius: 9px;
             cursor: pointer;
             transition: all 0.2s;
         }
-        .btn-sub:active { background: rgba(0, 191, 255, 0.1); }
+        .btn-sub:active { background: rgba(0, 191, 255, 0.12); transform: scale(0.96); }
 
         /* メインボタン */
         button.btn-main {
             width: 100%;
-            padding: 16px;
+            padding: 18px;
             font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            background: linear-gradient(135deg, #007aff, #00bfff);
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #0055ff, #00d4ff);
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
-            box-shadow: 0 4px 15px var(--primary-glow);
-            transition: all 0.2s;
+            box-shadow: 0 6px 20px var(--primary-glow);
+            transition: all 0.15s ease;
             text-transform: uppercase;
+            position: relative;
         }
-        button.btn-main:active { transform: scale(0.98); box-shadow: 0 2px 8px var(--primary-glow); }
-        button.btn-rush { background: linear-gradient(135deg, #ff0055, #ff3e6c); box-shadow: 0 4px 15px var(--rush-glow); }
-        button.btn-rush:active { box-shadow: 0 2px 8px var(--rush-glow); }
+        button.btn-main:active { transform: translateY(3px) scale(0.98); box-shadow: 0 2px 10px var(--primary-glow); }
+
+        button.btn-rush { background: linear-gradient(135deg, #ff0044, #ff4500); box-shadow: 0 6px 20px var(--rush-glow); }
+        button.btn-rush:active { box-shadow: 0 2px 10px var(--rush-glow); }
         
         /* テーブル */
-        .table-container { max-height: 160px; overflow-y: auto; margin-top: 12px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); }
+        .table-container { max-height: 150px; overflow-y: auto; margin-top: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); }
         .prob-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-        .prob-table th, .prob-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-        .prob-table th { background: rgba(255,255,255,0.02); color: var(--sub-text); font-weight: 700; position: sticky; top: 0; font-size: 11px; }
+        .prob-table th, .prob-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+        .prob-table th { background: rgba(255,255,255,0.03); color: var(--sub-text); font-weight: 800; position: sticky; top: 0; font-size: 11px; letter-spacing: 1px; }
 
-        /* 結果表示ボックス */
-        .result-box { text-align: center; padding: 16px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); border-radius: 12px; margin-top: 14px; }
-        .big-num { font-size: 46px; font-weight: 900; margin: 6px 0; font-variant-numeric: tabular-nums; }
-        .color-win { color: var(--success); text-shadow: 0 0 15px var(--success-glow); }
-        .color-rush { color: var(--rush-color); text-shadow: 0 0 15px var(--rush-glow); }
+        /* 結果表示枠 */
+        .result-box { text-align: center; padding: 20px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; margin-top: 14px; position: relative; }
         
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; font-size: 12px; text-align: left; color: var(--sub-text); }
-        .stat-grid span { color: var(--text); }
+        /* 巨大当選数字アニメ */
+        .big-num { font-size: 52px; font-weight: 900; margin: 4px 0; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+        .color-win { color: var(--success); text-shadow: 0 0 20px var(--success-glow); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .color-rush { color: var(--rush-color); text-shadow: 0 0 25px var(--rush-glow); }
         
-        /* タブの表示制御 */
+        .rush-count-animation { animation: rushPunch 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.5) calc(var(--i, 0)*0.05s) both; }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; filter: brightness(3); }
+            100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+        }
+        @keyframes rushPunch {
+            0% { transform: scale(0.3) rotate(-15deg); filter: brightness(5); opacity: 0; }
+            70% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1); opacity: 1; }
+        }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; font-size: 12px; text-align: left; color: var(--sub-text); letter-spacing: 0.5px; }
+        .stat-grid span { color: var(--text); font-weight: 700; }
+        
+        .gold-box {
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.03), rgba(255, 165, 0, 0.08));
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.05);
+        }
+        
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-content.active { display: block; animation: tabSlide 0.3s ease-out; }
+        @keyframes tabSlide { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
+
+<div class="flash-overlay" id="flash-screen"></div>
 
 <div class="container">
     
     <h1>PACHINKO SIMULATOR</h1>
     
-    <!-- タブスイッチ -->
     <div class="tabs">
-        <button class="tab-btn active" id="tab-btn-normal" onclick="switchTab('normal')">通常モード</button>
-        <button class="tab-btn" id="tab-btn-rush" onclick="switchTab('rush')">RUSHモード</button>
+        <button class="tab-btn active" id="tab-btn-normal" data-tab="normal">通常モード</button>
+        <button class="tab-btn" id="tab-btn-rush" data-tab="rush">RUSHモード</button>
     </div>
 
-    <!-- =============== ① 通常モード =============== -->
     <div id="content-normal" class="tab-content active">
         <div class="card">
             <p class="card-title">// 確率設定</p>
@@ -192,26 +237,24 @@
                 <input type="number" id="prob" value="319.9" step="0.1" inputmode="decimal">
             </div>
             <div class="quick-buttons">
-                <button class="btn-sub" onclick="setProb(319.9)">1/319.9</button>
-                <button class="btn-sub" onclick="setProb(399.9)">1/399.9</button>
+                <button class="btn-sub" id="btn-set-319">1/319.9</button>
+                <button class="btn-sub" id="btn-set-399">1/399.9</button>
             </div>
-            <button class="btn-main" onclick="runNormalSimulation()">START CHANCE</button>
+            <button class="btn-main" id="btn-run-normal">START CHANCE</button>
         </div>
 
-        <!-- 通常時結果 -->
-        <div class="card" id="normal-result-card" style="display: none; border-color: var(--success);">
-            <p class="card-title" style="color: var(--success); margin: 0;">BONUS ENCOUNTERED</p>
-            <div class="result-box">
-                <div class="big-num color-win"><span id="res-count">0</span> <span style="font-size:20px; font-weight:700;">G</span></div>
+        <div class="card" id="normal-result-card" style="display: none; border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 127, 0.25);">
+            <p class="card-title" style="color: var(--success); margin: 0; letter-spacing: 2px;">BONUS ENCOUNTERED</p>
+            <div class="result-box" id="normal-box-element">
+                <div class="big-num color-win" id="res-count-box"><span id="res-count">0</span> <span style="font-size:22px; font-weight:800; text-shadow:none;">G</span></div>
                 <div class="stat-grid">
                     <div>1000G超え: <span id="stat-over1000">--</span></div>
                     <div>目安投資: <span id="stat-investment">0</span>k</div>
                 </div>
             </div>
-            <button class="btn-main btn-rush" style="margin-top: 16px;" onclick="goToRushTab()">RUSH MODE ENTER ➔</button>
+            <button class="btn-main btn-rush" id="btn-go-to-rush" style="margin-top: 18px;">RUSH MODE ENTER ➔</button>
         </div>
 
-        <!-- 通常時確率データ -->
         <div class="card">
             <p class="card-title">// 通常時ハマり・当選確率</p>
             <div class="table-container">
@@ -223,7 +266,6 @@
         </div>
     </div>
 
-    <!-- =============== ② RUSHモード =============== -->
     <div id="content-rush" class="tab-content">
         <div class="card">
             <p class="card-title">// RUSH設定</p>
@@ -238,28 +280,26 @@
                 </div>
             </div>
             <div class="quick-buttons">
-                <button class="btn-sub" onclick="setRush(81)" style="color: var(--rush-color); border-color: rgba(255, 62, 108, 0.3);">81% 継続</button>
-                <button class="btn-sub" onclick="setRush(75)" style="color: var(--rush-color); border-color: rgba(255, 62, 108, 0.3);">75% 継続</button>
+                <button class="btn-sub" id="btn-set-rush81" style="color: var(--rush-color); border-color: rgba(255, 0, 85, 0.3);">81% 継続</button>
+                <button class="btn-sub" id="btn-set-rush75" style="color: var(--rush-color); border-color: rgba(255, 0, 85, 0.3);">75% 継続</button>
             </div>
-            <button class="btn-main btn-rush" onclick="runRushSimulation()">RUSH START</button>
+            <button class="btn-main btn-rush" id="btn-run-rush">RUSH START</button>
         </div>
 
-        <!-- RUSH結果 -->
-        <div class="card" id="rush-result-card" style="display: none; border-color: var(--rush-color); box-shadow: 0 0 20px var(--rush-glow);">
-            <p class="card-title" style="color: var(--rush-color); margin: 0;">RUSH RESULT</p>
+        <div class="card" id="rush-result-card" style="display: none; border-color: var(--rush-color); box-shadow: 0 0 30px var(--rush-glow);">
+            <p class="card-title" style="color: var(--rush-color); margin: 0; letter-spacing: 2px;">RUSH RESULT</p>
             <div class="result-box">
-                <div class="big-num color-rush"><span id="res-rush-count">0</span> <span style="font-size:20px; font-weight:700;">連</span></div>
+                <div class="big-num color-rush" id="res-rush-box"><span id="res-rush-count">0</span> <span style="font-size:22px; font-weight:800; text-shadow:none;">連</span></div>
             </div>
-            <div class="result-box" style="background: rgba(255, 235, 59, 0.05); border-color: rgba(255, 235, 59, 0.2);">
-                <div style="font-size: 11px; font-weight: 700; color: #ffd700; letter-spacing: 1px;">TOTAL SCORE</div>
-                <div class="big-num" style="font-size: 38px; margin: 4px 0; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.4);"><span id="res-payout">0</span> <span style="font-size:18px; font-weight:700;">玉</span></div>
+            <div class="result-box gold-box">
+                <div style="font-size: 11px; font-weight: 800; color: #ffd700; letter-spacing: 2px;">TOTAL SCORE</div>
+                <div class="big-num" id="res-payout-box" style="font-size: 40px; margin: 4px 0; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.5);"><span id="res-payout">0</span> <span style="font-size:20px; font-weight:800;">玉</span></div>
             </div>
         </div>
 
-        <!-- RUSH継続期待度データ -->
         <div class="card">
             <p class="card-title">// RUSH連チャン突破期待度</p>
-            <div class="table-container" style="max-height: 200px;">
+            <div class="table-container" style="max-height: 180px;">
                 <table class="prob-table">
                     <thead><tr><th>連チャン数</th><th>継続確率</th><th>終了確率</th></tr></thead>
                     <tbody id="rush-table-body"></tbody>
@@ -271,112 +311,174 @@
 </div>
 
 <script>
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.addEventListener('DOMContentLoaded', () => {
+        const probInput = document.getElementById('prob');
+        const rushInput = document.getElementById('rush-rate');
+        const payoutInput = document.getElementById('bonus-payout');
         
-        document.getElementById(`content-${tabName}`).classList.add('active');
-        document.getElementById(`tab-btn-${tabName}`).classList.add('active');
-    }
+        const normalTable = document.getElementById('normal-table-body');
+        const rushTable = document.getElementById('rush-table-body');
+        const flashScreen = document.getElementById('flash-screen');
 
-    const probInput = document.getElementById('prob');
-    const rushInput = document.getElementById('rush-rate');
-    const payoutInput = document.getElementById('bonus-payout');
-    
-    const normalTable = document.getElementById('normal-table-body');
-    const rushTable = document.getElementById('rush-table-body');
-    
-    function setProb(val) { probInput.value = val; updateNormalStats(); }
-    function setRush(val) { rushInput.value = val; updateRushStats(); }
+        // 音声ファイルの読み込み設定 (rise.mp3)
+        const riseSound = new Audio('rise.mp3');
 
-    function updateNormalStats() {
-        const x = parseFloat(probInput.value);
-        if (!x || x <= 0) return;
-
-        let normalHtml = '';
-        for (let g = 100; g <= 1000; g += 100) {
-            const missRate = Math.pow(1 - (1 / x), g);
-            const hitRate = 1 - missRate;
-            normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
-        }
-        normalTable.innerHTML = normalHtml;
-        return { x };
-    }
-
-    function updateRushStats() {
-        const r = parseFloat(rushInput.value) / 100;
-        if (!r || r <= 0 || r >= 1) return;
-
-        let rushHtml = '';
-        for (let run = 1; run <= 20; run++) {
-            const maintainProb = Math.pow(r, run - 1);
-            const endProb = 1 - maintainProb;
-            rushHtml += `<tr>
-                <td style="font-weight:700;">${run} 連以上</td>
-                <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
-                <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
-            </tr>`;
-        }
-        rushTable.innerHTML = rushHtml;
-        return { r };
-    }
-
-    probInput.addEventListener('input', updateNormalStats);
-    rushInput.addEventListener('input', updateRushStats);
-    
-    updateNormalStats();
-    updateRushStats();
-
-    function runNormalSimulation() {
-        const stats = updateNormalStats();
-        if (!stats) return;
-
-        let count = 0;
-        const p = 1 / stats.x;
-        while (true) {
-            count++;
-            if (Math.random() < p) break;
-            if (count > 200000) break;
+        // 音声再生処理
+        function playPachinkoSound() {
+            try {
+                // 連打対応：再生中の場合は巻き戻す
+                riseSound.currentTime = 0;
+                riseSound.play().catch(e => console.log("Audio play blocked:", e));
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
         }
 
-        document.getElementById('res-count').innerText = count;
-        
-        const over1000Span = document.getElementById('stat-over1000');
-        if (count > 1000) {
-            over1000Span.innerText = "OVER";
-            over1000Span.style.color = "var(--danger)";
-        } else {
-            over1000Span.innerText = "NONE";
-            over1000Span.style.color = "var(--success)";
-        }
-        
-        document.getElementById('stat-investment').innerText = Math.ceil(count / 18);
-        document.getElementById('normal-result-card').style.display = 'block';
-    }
-
-    function goToRushTab() {
-        switchTab('rush');
-        document.getElementById('rush-result-card').style.display = 'none';
-    }
-
-    function runRushSimulation() {
-        const stats = updateRushStats();
-        if (!stats) return;
-
-        let rushCount = 1;
-        while (true) {
-            if (Math.random() >= stats.r) break;
-            rushCount++;
-            if (rushCount > 500) break;
+        // フラッシュ演出
+        function triggerFlash() {
+            flashScreen.classList.remove('flash-active');
+            void flashScreen.offsetWidth; 
+            flashScreen.classList.add('flash-active');
+            playPachinkoSound(); // 音声トリガー
         }
 
-        const singlePayout = parseInt(payoutInput.value) || 0;
-        const totalPayout = rushCount * singlePayout;
+        // タブ切り替え
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`content-${tabName}`).classList.add('active');
+            document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+        }
 
-        document.getElementById('res-rush-count').innerText = rushCount;
-        document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
-        document.getElementById('rush-result-card').style.display = 'block';
-    }
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                switchTab(e.target.getAttribute('data-tab'));
+            });
+        });
+
+        // 統計更新処理
+        function updateNormalStats() {
+            const x = parseFloat(probInput.value);
+            if (!x || x <= 0) return;
+
+            let normalHtml = '';
+            for (let g = 100; g <= 1000; g += 100) {
+                const missRate = Math.pow(1 - (1 / x), g);
+                const hitRate = 1 - missRate;
+                normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
+            }
+            normalTable.innerHTML = normalHtml;
+            return { x };
+        }
+
+        function updateRushStats() {
+            const r = parseFloat(rushInput.value) / 100;
+            if (!r || r <= 0 || r >= 1) return;
+
+            let rushHtml = '';
+            for (let run = 1; run <= 20; run++) {
+                const maintainProb = Math.pow(r, run - 1);
+                const endProb = 1 - maintainProb;
+                rushHtml += `<tr>
+                    <td style="font-weight:700;">${run} 連以上</td>
+                    <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
+                    <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
+                </tr>`;
+            }
+            rushTable.innerHTML = rushHtml;
+            return { r };
+        }
+
+        probInput.addEventListener('input', updateNormalStats);
+        rushInput.addEventListener('input', updateRushStats);
+
+        document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
+        document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
+        document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
+        document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
+
+        // ① 通常シミュレーション
+        document.getElementById('btn-run-normal').addEventListener('click', () => {
+            const stats = updateNormalStats();
+            if (!stats) return;
+
+            triggerFlash();
+
+            let count = 0;
+            const p = 1 / stats.x;
+            while (true) {
+                count++;
+                if (Math.random() < p) break;
+                if (count > 200000) break;
+            }
+
+            document.getElementById('res-count').innerText = count;
+            
+            const over1000Span = document.getElementById('stat-over1000');
+            if (count > 1000) {
+                over1000Span.innerText = "OVER";
+                over1000Span.style.color = "var(--danger)";
+            } else {
+                over1000Span.innerText = "NONE";
+                over1000Span.style.color = "var(--success)";
+            }
+            
+            document.getElementById('stat-investment').innerText = Math.ceil(count / 18);
+            
+            const countBox = document.getElementById('res-count-box');
+            countBox.classList.remove('color-win');
+            void countBox.offsetWidth;
+            countBox.classList.add('color-win');
+
+            document.getElementById('normal-result-card').style.display = 'block';
+        });
+
+        document.getElementById('btn-go-to-rush').addEventListener('click', () => {
+            switchTab('rush');
+            document.getElementById('rush-result-card').style.display = 'none';
+        });
+
+        // ② RUSHシミュレーション
+        document.getElementById('btn-run-rush').addEventListener('click', () => {
+            const stats = updateRushStats();
+            if (!stats) return;
+
+            triggerFlash();
+
+            let rushCount = 1;
+            while (true) {
+                if (Math.random() >= stats.r) break;
+                rushCount++;
+                if (rushCount > 500) break;
+            }
+
+            const singlePayout = parseInt(payoutInput.value) || 0;
+            const totalPayout = rushCount * singlePayout;
+
+            document.getElementById('res-rush-count').innerText = rushCount;
+            document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
+
+            const rushBox = document.getElementById('res-rush-box');
+            const payoutBox = document.getElementById('res-payout-box');
+            
+            rushBox.classList.remove('rush-count-animation');
+            payoutBox.classList.remove('rush-count-animation');
+            void rushBox.offsetWidth;
+            void payoutBox.offsetWidth;
+            
+            rushBox.style.setProperty('--i', '1');
+            payoutBox.style.setProperty('--i', '2');
+            rushBox.classList.add('rush-count-animation');
+            payoutBox.classList.add('rush-count-animation');
+
+            document.getElementById('rush-result-card').style.display = 'block';
+        });
+
+        // 初期実行
+        updateNormalStats();
+        updateRushStats();
+    });
 </script>
 </body>
 </html>
