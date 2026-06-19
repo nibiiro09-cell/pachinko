@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PACHINKO SIMULATOR</title>
+    <title>PACHINKO & SLOT SIMULATOR</title>
     <style>
         :root {
             --bg: #05060a;
@@ -117,7 +117,7 @@
             background: rgba(255, 0, 85, 0.03);
         }
 
-        /* 画面全体の衝撃フラッシュエフェクト */
+        /* 通常フラッシュエフェクト */
         .flash-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -130,6 +130,97 @@
         @keyframes screenFlash {
             0% { opacity: 0.8; background: #fff; }
             50% { background: var(--rush-color); opacity: 0.4; }
+            100% { opacity: 0; }
+        }
+
+        /* 👑 究極進化・プレミアムフリーズ演出レイヤー */
+        .freeze-container {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 10000;
+            display: none;
+            pointer-events: none;
+        }
+
+        /* 1. 元の画面（白）が一瞬で中心に吸い込まれる「ぷちゅん」ライン */
+        .freeze-shutter {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff;
+            mix-blend-mode: difference; /* 画面反転効果で強烈な違和感を演出 */
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+            opacity: 0;
+            z-index: 10002;
+        }
+
+        /* 2. 吸い込まれる中心点に発生する強烈な残像グロウ */
+        .freeze-core-glow {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 150px; height: 150px;
+            background: radial-gradient(circle, #ffffff 0%, rgba(255,255,255,0.8) 20%, rgba(0,191,255,0.4) 50%, transparent 70%);
+            transform: translate(-50%, -50%) scale(0);
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 10003;
+        }
+
+        /* 3. ぷちゅんした後の「漆黒（静寂）」を維持するベースレイヤー */
+        .freeze-blackout {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000;
+            opacity: 0;
+            z-index: 10001;
+        }
+
+        /* --- アニメーション制御トリガー --- */
+        .freeze-active { display: block; }
+
+        .freeze-active .freeze-shutter {
+            animation: puchunSuikomi 0.25s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+        .freeze-active .freeze-core-glow {
+            animation: coreFlash 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+        .freeze-active .freeze-blackout {
+            animation: absoluteSilence 1.0s linear forwards;
+        }
+
+        /* 液晶がひし形に超高速で中心へ絞り込まれるキーフレーム */
+        @keyframes puchunSuikomi {
+            0% {
+                opacity: 1;
+                clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+            }
+            40% {
+                opacity: 1;
+                clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            }
+            90% {
+                opacity: 1;
+                clip-path: polygon(50% 49%, 51% 50%, 50% 51%, 49% 50%);
+            }
+            100% {
+                opacity: 0;
+                clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
+            }
+        }
+
+        /* 中心に吸い込まれた瞬間に「パチッ」と弾けて消える閃光 */
+        @keyframes coreFlash {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: brightness(2); }
+            45% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        }
+
+        /* 完全なる静寂（漆黒） ➔ 復帰直前のホワイトアウト ➔ レバーオン復帰 */
+        @keyframes absoluteSilence {
+            0% { opacity: 1; background: #000000; }
+            92.0% { background: #000000; opacity: 1; }
+            92.3% { background: #ffffff; opacity: 1; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+            94.0% { opacity: 0; }
             100% { opacity: 0; }
         }
 
@@ -286,6 +377,12 @@
 
 <div class="flash-overlay" id="flash-screen"></div>
 
+<div class="freeze-container" id="freeze-container">
+    <div class="freeze-blackout"></div>
+    <div class="freeze-shutter"></div>
+    <div class="freeze-core-glow"></div>
+</div>
+
 <div class="container">
     
     <h1>PACHINKO SIMULATOR</h1>
@@ -391,159 +488,194 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const probInput = document.getElementById('prob');
-        const rushInput = document.getElementById('rush-rate');
-        const payoutInput = document.getElementById('bonus-payout');
-        
-        const normalTable = document.getElementById('normal-table-body');
-        const rushTable = document.getElementById('rush-table-body');
-        const flashScreen = document.getElementById('flash-screen');
-        
-        const skipEffectsCheckbox = document.getElementById('skip-effects');
-        const modeLabel = document.getElementById('mode-label');
-        const modeText = document.getElementById('mode-text');
+    const probInput = document.getElementById('prob');
+    const rushInput = document.getElementById('rush-rate');
+    const payoutInput = document.getElementById('bonus-payout');
+    
+    const normalTable = document.getElementById('normal-table-body');
+    const rushTable = document.getElementById('rush-table-body');
+    const flashScreen = document.getElementById('flash-screen');
+    const freezeContainer = document.getElementById('freeze-container');
+    
+    const skipEffectsCheckbox = document.getElementById('skip-effects');
+    const modeLabel = document.getElementById('mode-label');
+    const modeText = document.getElementById('mode-text');
 
-        const riseSound = new Audio('rise.mp3');
+    // 🎵 音声ファイルの定義
+    const bgmRise = new Audio('rise.mp3');
+    const bgmFreeze = new Audio('god_freeze.mp3');
+    const bgmGodAtari = new Audio('god_atari.mp3'); // 👑 フリーズ復帰時専用SE
+    
+    bgmRise.preload = 'auto';
+    bgmFreeze.preload = 'auto';
+    bgmGodAtari.preload = 'auto';
 
-        skipEffectsCheckbox.addEventListener('change', () => {
-            if (skipEffectsCheckbox.checked) {
-                modeText.innerText = "演出OFF (高速消化)";
-                modeLabel.classList.add('is-active');
+    function playRiseSound() {
+        if (skipEffectsCheckbox.checked) return;
+        if (!bgmRise) return;
+        bgmRise.pause();
+        bgmRise.currentTime = 0;
+        bgmRise.play().catch(err => console.log("Audio play blocked:", err));
+    }
+
+    function playFreezeSound() {
+        if (skipEffectsCheckbox.checked) return;
+        if (!bgmFreeze) return;
+        bgmFreeze.pause();
+        bgmFreeze.currentTime = 0;
+        bgmFreeze.play().catch(err => console.log("Freeze Audio play blocked:", err));
+    }
+
+    // 🌟 神当り音再生関数
+    function playGodAtariSound() {
+        if (skipEffectsCheckbox.checked) return;
+        if (!bgmGodAtari) return;
+        bgmGodAtari.pause();
+        bgmGodAtari.currentTime = 0;
+        bgmGodAtari.play().catch(err => console.log("GodAtari Audio play blocked:", err));
+    }
+
+    skipEffectsCheckbox.addEventListener('change', () => {
+        if (skipEffectsCheckbox.checked) {
+            modeText.innerText = "演出OFF (高速消化)";
+            modeLabel.classList.add('is-active');
+        } else {
+            modeText.innerText = "演出ON (通常消化)";
+            modeLabel.classList.remove('is-active');
+        }
+    });
+
+    function triggerFlash() {
+        if (skipEffectsCheckbox.checked) return;
+        flashScreen.classList.remove('flash-active');
+        void flashScreen.offsetWidth; 
+        flashScreen.classList.add('flash-active');
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(`content-${tabName}`).classList.add('active');
+        document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            switchTab(e.target.getAttribute('data-tab'));
+        });
+    });
+
+    function updateNormalStats() {
+        const x = parseFloat(probInput.value);
+        if (!x || x <= 0) return;
+
+        let normalHtml = '';
+        for (let g = 100; g <= 2000; g += 100) {
+            const missRate = Math.pow(1 - (1 / x), g);
+            const hitRate = 1 - missRate;
+            normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
+        }
+        normalTable.innerHTML = normalHtml;
+        return { x };
+    }
+
+    function updateRushStats() {
+        const r = parseFloat(rushInput.value) / 100;
+        if (!r || r <= 0 || r >= 1) return;
+
+        let rushHtml = '';
+        for (let run = 1; run <= 20; run++) {
+            const maintainProb = Math.pow(r, run - 1);
+            const endProb = 1 - maintainProb;
+            rushHtml += `<tr>
+                <td style="font-weight:700;">${run} 連以上</td>
+                <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
+                <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
+            </tr>`;
+        }
+        rushTable.innerHTML = rushHtml;
+        return { r };
+    }
+
+    probInput.addEventListener('input', updateNormalStats);
+    rushInput.addEventListener('input', updateRushStats);
+
+    document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
+    document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
+    document.getElementById('btn-set-16384').addEventListener('click', () => { probInput.value = "16384.0"; updateNormalStats(); });
+    document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
+    document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
+
+    function animateValue(element, start, end, duration, callback) {
+        if (skipEffectsCheckbox.checked) {
+            element.innerText = end.toLocaleString();
+            if (callback) callback();
+            return;
+        }
+
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const current = Math.floor(progress * (end - start) + start);
+            element.innerText = current.toLocaleString();
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
             } else {
-                modeText.innerText = "演出ON (通常消化)";
-                modeLabel.classList.remove('is-active');
-            }
-        });
-
-        function playPachinkoSound() {
-            if (skipEffectsCheckbox.checked) return;
-            try {
-                riseSound.currentTime = 0;
-                riseSound.play().catch(e => console.log("Audio play blocked:", e));
-            } catch (e) {
-                console.error("Audio error:", e);
-            }
-        }
-
-        function triggerFlash() {
-            if (skipEffectsCheckbox.checked) return;
-            flashScreen.classList.remove('flash-active');
-            void flashScreen.offsetWidth; 
-            flashScreen.classList.add('flash-active');
-            playPachinkoSound();
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            
-            document.getElementById(`content-${tabName}`).classList.add('active');
-            document.getElementById(`tab-btn-${tabName}`).classList.add('active');
-        }
-
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                switchTab(e.target.getAttribute('data-tab'));
-            });
-        });
-
-        function updateNormalStats() {
-            const x = parseFloat(probInput.value);
-            if (!x || x <= 0) return;
-
-            let normalHtml = '';
-            for (let g = 100; g <= 2000; g += 100) {
-                const missRate = Math.pow(1 - (1 / x), g);
-                const hitRate = 1 - missRate;
-                normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
-            }
-            normalTable.innerHTML = normalHtml;
-            return { x };
-        }
-
-        function updateRushStats() {
-            const r = parseFloat(rushInput.value) / 100;
-            if (!r || r <= 0 || r >= 1) return;
-
-            let rushHtml = '';
-            for (let run = 1; run <= 20; run++) {
-                const maintainProb = Math.pow(r, run - 1);
-                const endProb = 1 - maintainProb;
-                rushHtml += `<tr>
-                    <td style="font-weight:700;">${run} 連以上</td>
-                    <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
-                    <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
-                </tr>`;
-            }
-            rushTable.innerHTML = rushHtml;
-            return { r };
-        }
-
-        probInput.addEventListener('input', updateNormalStats);
-        rushInput.addEventListener('input', updateRushStats);
-
-        // クイック選択イベント
-        document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
-        document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
-        document.getElementById('btn-set-16384').addEventListener('click', () => { probInput.value = "16384.0"; updateNormalStats(); });
-        document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
-        document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
-
-        function animateValue(element, start, end, duration, callback) {
-            if (skipEffectsCheckbox.checked) {
                 element.innerText = end.toLocaleString();
                 if (callback) callback();
-                return;
             }
+        };
+        window.requestAnimationFrame(step);
+    }
 
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                const current = Math.floor(progress * (end - start) + start);
-                element.innerText = current.toLocaleString();
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                } else {
-                    element.innerText = end.toLocaleString();
-                    if (callback) callback();
-                }
-            };
-            window.requestAnimationFrame(step);
+    let isSimulating = false;
+
+    document.getElementById('btn-run-normal').addEventListener('click', () => {
+        if (isSimulating) return;
+        const stats = updateNormalStats();
+        if (!stats) return;
+
+        isSimulating = true;
+        
+        document.getElementById('normal-card-status').innerText = "SIMULATING...";
+        document.getElementById('normal-stats-grid').style.visibility = 'hidden';
+        document.getElementById('btn-go-to-rush').style.display = 'none';
+        document.getElementById('res-count').innerText = "0";
+        document.getElementById('normal-result-card').style.display = 'block';
+
+        let count = 0;
+        const p = 1 / stats.x;
+        while (true) {
+            count++;
+            if (Math.random() < p) break;
+            if (count > 200000) break;
         }
 
-        let isSimulating = false;
+        const isFreezeActive = (count === 1 && !skipEffectsCheckbox.checked);
 
-        document.getElementById('btn-run-normal').addEventListener('click', () => {
-            if (isSimulating) return;
-            const stats = updateNormalStats();
-            if (!stats) return;
-
-            isSimulating = true;
-            
-            document.getElementById('normal-card-status').innerText = "SIMULATING...";
-            document.getElementById('normal-stats-grid').style.visibility = 'hidden';
-            document.getElementById('btn-go-to-rush').style.display = 'none';
-            document.getElementById('res-count').innerText = "0";
-            document.getElementById('normal-result-card').style.display = 'block';
-
-            let count = 0;
-            const p = 1 / stats.x;
-            while (true) {
-                count++;
-                if (Math.random() < p) break;
-                if (count > 200000) break; // 無限ループ安全弁
-            }
-
+        const startEvaluation = () => {
             const duration = Math.min(400 + (count * 0.5), 1200);
-
             const countSpan = document.getElementById('res-count');
             const countBox = document.getElementById('res-count-box');
             countBox.classList.remove('pop-animation');
 
             animateValue(countSpan, 0, count, duration, () => {
-                triggerFlash();
-                document.getElementById('normal-card-status').innerText = "BONUS ENCOUNTERED";
+                // 🌟【修正箇所】通常時はrise.mp3、フリーズ復帰時はgod_atari.mp3を排他的に再生
+                if (!isFreezeActive) {
+                    triggerFlash();
+                    playRiseSound();
+                } else {
+                    playGodAtariSound();
+                }
+                
+                document.getElementById('normal-card-status').innerText = isFreezeActive ? "PREMIUM FREEZE BONUS" : "BONUS ENCOUNTERED";
+                if(isFreezeActive) {
+                    document.getElementById('normal-card-status').style.color = "var(--rush-color)";
+                } else {
+                    document.getElementById('normal-card-status').style.color = "var(--success)";
+                }
                 
                 const over1000Span = document.getElementById('stat-over1000');
                 if (count > 1000) {
@@ -575,64 +707,76 @@
                 }
                 isSimulating = false;
             });
-        });
+        };
 
-        document.getElementById('btn-go-to-rush').addEventListener('click', () => {
-            switchTab('rush');
-            document.getElementById('rush-result-card').style.display = 'none';
-        });
+        if (isFreezeActive) {
+            playFreezeSound();
+            freezeContainer.classList.add('freeze-active');
 
-        document.getElementById('btn-run-rush').addEventListener('click', () => {
-            if (isSimulating) return;
-            const stats = updateRushStats();
-            if (!stats) return;
-
-            isSimulating = true;
-
-            document.getElementById('rush-card-status').innerText = "RUSHING...";
-            document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
-            document.getElementById('res-rush-count').innerText = "0";
-            document.getElementById('rush-result-card').style.display = 'block';
-
-            let rushCount = 1;
-            while (true) {
-                if (Math.random() >= stats.r) break;
-                rushCount++;
-                if (rushCount > 500) break;
-            }
-
-            const singlePayout = parseInt(payoutInput.value) || 0;
-            const totalPayout = rushCount * singlePayout;
-
-            const duration = Math.min(300 + (rushCount * 30), 1500);
-
-            const rushCountSpan = document.getElementById('res-rush-count');
-            const rushBox = document.getElementById('res-rush-box');
-            const payoutBox = document.getElementById('res-payout-box');
-            
-            rushBox.classList.remove('rush-count-animation');
-            payoutBox.classList.remove('rush-count-animation');
-
-            animateValue(rushCountSpan, 0, rushCount, duration, () => {
-                triggerFlash();
-                document.getElementById('rush-card-status').innerText = "RUSH RESULT";
-                document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
-                document.getElementById('rush-payout-box-element').style.visibility = 'visible';
-                
-                if (!skipEffectsCheckbox.checked) {
-                    rushBox.style.setProperty('--i', '1');
-                    payoutBox.style.setProperty('--i', '2');
-                    rushBox.classList.add('rush-count-animation');
-                    payoutBox.classList.add('rush-count-animation');
-                }
-                
-                isSimulating = false;
-            });
-        });
-
-        updateNormalStats();
-        updateRushStats();
+            setTimeout(() => {
+                freezeContainer.classList.remove('freeze-active');
+                startEvaluation();
+            }, 1000);
+        } else {
+            startEvaluation();
+        }
     });
+
+    document.getElementById('btn-go-to-rush').addEventListener('click', () => {
+        switchTab('rush');
+        document.getElementById('rush-result-card').style.display = 'none';
+    });
+
+    document.getElementById('btn-run-rush').addEventListener('click', () => {
+        if (isSimulating) return;
+        const stats = updateRushStats();
+        if (!stats) return;
+
+        isSimulating = true;
+
+        document.getElementById('rush-card-status').innerText = "RUSHING...";
+        document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
+        document.getElementById('res-rush-count').innerText = "0";
+        document.getElementById('rush-result-card').style.display = 'block';
+
+        let rushCount = 1;
+        while (true) {
+            if (Math.random() >= stats.r) break;
+            rushCount++;
+            if (rushCount > 500) break;
+        }
+
+        const singlePayout = parseInt(payoutInput.value) || 0;
+        const totalPayout = rushCount * singlePayout;
+
+        const duration = Math.min(300 + (rushCount * 30), 1500);
+
+        const rushCountSpan = document.getElementById('res-rush-count');
+        const rushBox = document.getElementById('res-rush-box');
+        const payoutBox = document.getElementById('res-payout-box');
+        
+        rushBox.classList.remove('rush-count-animation');
+        payoutBox.classList.remove('rush-count-animation');
+
+        animateValue(rushCountSpan, 0, rushCount, duration, () => {
+            triggerFlash();
+            document.getElementById('rush-card-status').innerText = "RUSH RESULT";
+            document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
+            document.getElementById('rush-payout-box-element').style.visibility = 'visible';
+            
+            if (!skipEffectsCheckbox.checked) {
+                rushBox.style.setProperty('--i', '1');
+                payoutBox.style.setProperty('--i', '2');
+                rushBox.classList.add('rush-count-animation');
+                payoutBox.classList.add('rush-count-animation');
+            }
+            isSimulating = false;
+        });
+    });
+
+    updateNormalStats();
+    updateRushStats();
+});
 </script>
 </body>
 </html>
