@@ -488,295 +488,334 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-    const probInput = document.getElementById('prob');
-    const rushInput = document.getElementById('rush-rate');
-    const payoutInput = document.getElementById('bonus-payout');
-    
-    const normalTable = document.getElementById('normal-table-body');
-    const rushTable = document.getElementById('rush-table-body');
-    const flashScreen = document.getElementById('flash-screen');
-    const freezeContainer = document.getElementById('freeze-container');
-    
-    const skipEffectsCheckbox = document.getElementById('skip-effects');
-    const modeLabel = document.getElementById('mode-label');
-    const modeText = document.getElementById('mode-text');
-
-    // 🎵 音声ファイルの定義
-    const bgmRise = new Audio('rise.mp3');
-    const bgmFreeze = new Audio('god_freeze.mp3');
-    const bgmGodAtari = new Audio('god_atari.mp3'); // 👑 フリーズ復帰時専用SE
-    
-    bgmRise.preload = 'auto';
-    bgmFreeze.preload = 'auto';
-    bgmGodAtari.preload = 'auto';
-
-    function playRiseSound() {
-        if (skipEffectsCheckbox.checked) return;
-        if (!bgmRise) return;
-        bgmRise.pause();
-        bgmRise.currentTime = 0;
-        bgmRise.play().catch(err => console.log("Audio play blocked:", err));
-    }
-
-    function playFreezeSound() {
-        if (skipEffectsCheckbox.checked) return;
-        if (!bgmFreeze) return;
-        bgmFreeze.pause();
-        bgmFreeze.currentTime = 0;
-        bgmFreeze.play().catch(err => console.log("Freeze Audio play blocked:", err));
-    }
-
-    // 🌟 神当り音再生関数
-    function playGodAtariSound() {
-        if (skipEffectsCheckbox.checked) return;
-        if (!bgmGodAtari) return;
-        bgmGodAtari.pause();
-        bgmGodAtari.currentTime = 0;
-        bgmGodAtari.play().catch(err => console.log("GodAtari Audio play blocked:", err));
-    }
-
-    skipEffectsCheckbox.addEventListener('change', () => {
-        if (skipEffectsCheckbox.checked) {
-            modeText.innerText = "演出OFF (高速消化)";
-            modeLabel.classList.add('is-active');
-        } else {
-            modeText.innerText = "演出ON (通常消化)";
-            modeLabel.classList.remove('is-active');
-        }
-    });
-
-    function triggerFlash() {
-        if (skipEffectsCheckbox.checked) return;
-        flashScreen.classList.remove('flash-active');
-        void flashScreen.offsetWidth; 
-        flashScreen.classList.add('flash-active');
-    }
-
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        const probInput = document.getElementById('prob');
+        const rushInput = document.getElementById('rush-rate');
+        const payoutInput = document.getElementById('bonus-payout');
         
-        document.getElementById(`content-${tabName}`).classList.add('active');
-        document.getElementById(`tab-btn-${tabName}`).classList.add('active');
-    }
+        const normalTable = document.getElementById('normal-table-body');
+        const rushTable = document.getElementById('rush-table-body');
+        const flashScreen = document.getElementById('flash-screen');
+        const freezeContainer = document.getElementById('freeze-container');
+        
+        const skipEffectsCheckbox = document.getElementById('skip-effects');
+        const modeLabel = document.getElementById('mode-label');
+        const modeText = document.getElementById('mode-text');
 
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            switchTab(e.target.getAttribute('data-tab'));
-        });
-    });
+        // 👑 固定演出用の音声定義
+        const bgmFreeze = new Audio('god_freeze.mp3');
+        const bgmGodAtari = new Audio('god_atari.mp3');
+        bgmFreeze.preload = 'auto';
+        bgmGodAtari.preload = 'auto';
 
-    function updateNormalStats() {
-        const x = parseFloat(probInput.value);
-        if (!x || x <= 0) return;
+        // 🌟 riseフォルダ内のランダム音源定義システム
+        const soundFiles = [
+            'sound/rise.mp3',
+            'sound/teoti.mp3',
+            'sound/otiburu.mp3',
+            'sound/unicorn.mp3',
+        ];
 
-        let normalHtml = '';
-        for (let g = 100; g <= 2000; g += 100) {
-            const missRate = Math.pow(1 - (1 / x), g);
-            const hitRate = 1 - missRate;
-            normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
-        }
-        normalTable.innerHTML = normalHtml;
-        return { x };
-    }
+        // 現在再生中のランダム音声を保持する変数
+        let currentRandomAudio = null;
 
-    function updateRushStats() {
-        const r = parseFloat(rushInput.value) / 100;
-        if (!r || r <= 0 || r >= 1) return;
-
-        let rushHtml = '';
-        for (let run = 1; run <= 20; run++) {
-            const maintainProb = Math.pow(r, run - 1);
-            const endProb = 1 - maintainProb;
-            rushHtml += `<tr>
-                <td style="font-weight:700;">${run} 連以上</td>
-                <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
-                <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
-            </tr>`;
-        }
-        rushTable.innerHTML = rushHtml;
-        return { r };
-    }
-
-    probInput.addEventListener('input', updateNormalStats);
-    rushInput.addEventListener('input', updateRushStats);
-
-    document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
-    document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
-    document.getElementById('btn-set-16384').addEventListener('click', () => { probInput.value = "16384.0"; updateNormalStats(); });
-    document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
-    document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
-
-    function animateValue(element, start, end, duration, callback) {
-        if (skipEffectsCheckbox.checked) {
-            element.innerText = end.toLocaleString();
-            if (callback) callback();
-            return;
+        // 🎵 すべての音声を完全に停止して初期化する共通関数
+        function stopAllSounds() {
+            if (bgmFreeze) {
+                bgmFreeze.pause();
+                bgmFreeze.currentTime = 0;
+            }
+            if (bgmGodAtari) {
+                bgmGodAtari.pause();
+                bgmGodAtari.currentTime = 0;
+            }
+            if (currentRandomAudio) {
+                currentRandomAudio.pause();
+                currentRandomAudio.currentTime = 0;
+                currentRandomAudio = null;
+            }
         }
 
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const current = Math.floor(progress * (end - start) + start);
-            element.innerText = current.toLocaleString();
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
+        // 通常当選時に走るランダム再生関数
+        function playRandomRiseSound() {
+            if (skipEffectsCheckbox.checked) return;
+            if (soundFiles.length === 0) return;
+
+            stopAllSounds();
+
+            const randomIndex = Math.floor(Math.random() * soundFiles.length);
+            const selectedFile = soundFiles[randomIndex];
+
+            currentRandomAudio = new Audio(selectedFile);
+            currentRandomAudio.play().catch(err => console.log("Random Audio play blocked:", err));
+        }
+
+        // フリーズ演出開始時の再生関数
+        function playFreezeSound() {
+            if (skipEffectsCheckbox.checked) return;
+            
+            stopAllSounds();
+
+            if (!bgmFreeze) return;
+            bgmFreeze.play().catch(err => console.log("Freeze Audio play blocked:", err));
+        }
+
+        // 神当たり演出開始時の再生関数
+        function playGodAtariSound() {
+            if (skipEffectsCheckbox.checked) return;
+            
+            stopAllSounds();
+
+            if (!bgmGodAtari) return;
+            bgmGodAtari.play().catch(err => console.log("GodAtari Audio play blocked:", err));
+        }
+
+        skipEffectsCheckbox.addEventListener('change', () => {
+            if (skipEffectsCheckbox.checked) {
+                modeText.innerText = "演出OFF (高速消化)";
+                modeLabel.classList.add('is-active');
             } else {
+                modeText.innerText = "演出ON (通常消化)";
+                modeLabel.classList.remove('is-active');
+            }
+        });
+
+        function triggerFlash() {
+            if (skipEffectsCheckbox.checked) return;
+            flashScreen.classList.remove('flash-active');
+            void flashScreen.offsetWidth; 
+            flashScreen.classList.add('flash-active');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`content-${tabName}`).classList.add('active');
+            document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                switchTab(e.target.getAttribute('data-tab'));
+            });
+        });
+
+        function updateNormalStats() {
+            const x = parseFloat(probInput.value);
+            if (!x || x <= 0) return;
+
+            let normalHtml = '';
+            for (let g = 100; g <= 2000; g += 100) {
+                const missRate = Math.pow(1 - (1 / x), g);
+                const hitRate = 1 - missRate;
+                normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
+            }
+            normalTable.innerHTML = normalHtml;
+            return { x };
+        }
+
+        function updateRushStats() {
+            const r = parseFloat(rushInput.value) / 100;
+            if (!r || r <= 0 || r >= 1) return;
+
+            let rushHtml = '';
+            for (let run = 1; run <= 20; run++) {
+                const maintainProb = Math.pow(r, run - 1);
+                const endProb = 1 - maintainProb;
+                rushHtml += `<tr>
+                    <td style="font-weight:700;">${run} 連以上</td>
+                    <td style="color:var(--primary); font-weight:700;">${(maintainProb*100).toFixed(1)}%</td>
+                    <td style="color:var(--sub-text);">${run === 1 ? '0.0' : (endProb*100).toFixed(1)}%</td>
+                </tr>`;
+            }
+            rushTable.innerHTML = rushHtml;
+            return { r };
+        }
+
+        probInput.addEventListener('input', updateNormalStats);
+        rushInput.addEventListener('input', updateRushStats);
+
+        document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
+        document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
+        document.getElementById('btn-set-16384').addEventListener('click', () => { probInput.value = "16384.0"; updateNormalStats(); });
+        document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
+        document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
+
+        function animateValue(element, start, end, duration, callback) {
+            if (skipEffectsCheckbox.checked) {
                 element.innerText = end.toLocaleString();
                 if (callback) callback();
+                return;
             }
-        };
-        window.requestAnimationFrame(step);
-    }
 
-    let isSimulating = false;
-
-    document.getElementById('btn-run-normal').addEventListener('click', () => {
-        if (isSimulating) return;
-        const stats = updateNormalStats();
-        if (!stats) return;
-
-        isSimulating = true;
-        
-        document.getElementById('normal-card-status').innerText = "SIMULATING...";
-        document.getElementById('normal-stats-grid').style.visibility = 'hidden';
-        document.getElementById('btn-go-to-rush').style.display = 'none';
-        document.getElementById('res-count').innerText = "0";
-        document.getElementById('normal-result-card').style.display = 'block';
-
-        let count = 0;
-        const p = 1 / stats.x;
-        while (true) {
-            count++;
-            if (Math.random() < p) break;
-            if (count > 200000) break;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const current = Math.floor(progress * (end - start) + start);
+                element.innerText = current.toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    element.innerText = end.toLocaleString();
+                    if (callback) callback();
+                }
+            };
+            window.requestAnimationFrame(step);
         }
 
-        const isFreezeActive = (count === 1 && !skipEffectsCheckbox.checked);
+        let isSimulating = false;
 
-        const startEvaluation = () => {
-            const duration = Math.min(400 + (count * 0.5), 1200);
-            const countSpan = document.getElementById('res-count');
-            const countBox = document.getElementById('res-count-box');
-            countBox.classList.remove('pop-animation');
+        document.getElementById('btn-run-normal').addEventListener('click', () => {
+            // ボタンが押された瞬間、前回の演出音が残っていたら即ブチ切り
+            stopAllSounds();
 
-            animateValue(countSpan, 0, count, duration, () => {
-                // 🌟【修正箇所】通常時はrise.mp3、フリーズ復帰時はgod_atari.mp3を排他的に再生
-                if (!isFreezeActive) {
-                    triggerFlash();
-                    playRiseSound();
-                } else {
-                    playGodAtariSound();
-                }
-                
-                document.getElementById('normal-card-status').innerText = isFreezeActive ? "PREMIUM FREEZE BONUS" : "BONUS ENCOUNTERED";
-                if(isFreezeActive) {
-                    document.getElementById('normal-card-status').style.color = "var(--rush-color)";
-                } else {
-                    document.getElementById('normal-card-status').style.color = "var(--success)";
-                }
-                
-                const over1000Span = document.getElementById('stat-over1000');
-                if (count > 1000) {
-                    over1000Span.innerText = "OVER";
-                    over1000Span.style.color = "var(--danger)";
-                } else {
-                    over1000Span.innerText = "NONE";
-                    over1000Span.style.color = "var(--success)";
-                }
-                
-                const actualHitRate = 1 - Math.pow(1 - p, count);
-                const probSpan = document.getElementById('stat-hit-probability');
-                probSpan.innerText = `${(actualHitRate * 100).toFixed(2)} %`;
-                
-                if (actualHitRate > 0.8) {
-                    probSpan.style.color = "var(--rush-color)";
-                } else if (actualHitRate < 0.3) {
-                    probSpan.style.color = "var(--success)";
-                } else {
-                    probSpan.style.color = "var(--primary)";
-                }
+            if (isSimulating) return;
+            const stats = updateNormalStats();
+            if (!stats) return;
 
-                document.getElementById('stat-investment').innerText = Math.ceil(count / 18);
-                document.getElementById('normal-stats-grid').style.visibility = 'visible';
-                document.getElementById('btn-go-to-rush').style.display = 'block';
+            isSimulating = true;
+            
+            document.getElementById('normal-card-status').innerText = "SIMULATING...";
+            document.getElementById('normal-stats-grid').style.visibility = 'hidden';
+            document.getElementById('btn-go-to-rush').style.display = 'none';
+            document.getElementById('res-count').innerText = "0";
+            document.getElementById('normal-result-card').style.display = 'block';
+
+            let count = 0;
+            const p = 1 / stats.x;
+            while (true) {
+                count++;
+                if (Math.random() < p) break;
+                if (count > 200000) break;
+            }
+
+            const isFreezeActive = (count === 1 && !skipEffectsCheckbox.checked);
+
+            const startEvaluation = () => {
+                const duration = Math.min(400 + (count * 0.5), 1200);
+                const countSpan = document.getElementById('res-count');
+                const countBox = document.getElementById('res-count-box');
+                countBox.classList.remove('pop-animation');
+
+                animateValue(countSpan, 0, count, duration, () => {
+                    // 通常時 or フリーズ時で音声を分岐再生
+                    if (!isFreezeActive) {
+                        triggerFlash();
+                        playRandomRiseSound();
+                    } else {
+                        playGodAtariSound();
+                    }
+                    
+                    document.getElementById('normal-card-status').innerText = isFreezeActive ? "PREMIUM FREEZE BONUS" : "BONUS ENCOUNTERED";
+                    if(isFreezeActive) {
+                        document.getElementById('normal-card-status').style.color = "var(--rush-color)";
+                    } else {
+                        document.getElementById('normal-card-status').style.color = "var(--success)";
+                    }
+                    
+                    const over1000Span = document.getElementById('stat-over1000');
+                    if (count > 1000) {
+                        over1000Span.innerText = "OVER";
+                        over1000Span.style.color = "var(--danger)";
+                    } else {
+                        over1000Span.innerText = "NONE";
+                        over1000Span.style.color = "var(--success)";
+                    }
+                    
+                    const actualHitRate = 1 - Math.pow(1 - p, count);
+                    const probSpan = document.getElementById('stat-hit-probability');
+                    probSpan.innerText = `${(actualHitRate * 100).toFixed(2)} %`;
+                    
+                    if (actualHitRate > 0.8) {
+                        probSpan.style.color = "var(--rush-color)";
+                    } else if (actualHitRate < 0.3) {
+                        probSpan.style.color = "var(--success)";
+                    } else {
+                        probSpan.style.color = "var(--primary)";
+                    }
+
+                    document.getElementById('stat-investment').innerText = Math.ceil(count / 18);
+                    document.getElementById('normal-stats-grid').style.visibility = 'visible';
+                    document.getElementById('btn-go-to-rush').style.display = 'block';
+                    
+                    if (!skipEffectsCheckbox.checked) {
+                        countBox.classList.add('pop-animation');
+                    }
+                    isSimulating = false;
+                });
+            };
+
+            if (isFreezeActive) {
+                playFreezeSound();
+                freezeContainer.classList.add('freeze-active');
+
+                setTimeout(() => {
+                    freezeContainer.classList.remove('freeze-active');
+                    startEvaluation();
+                }, 1000);
+            } else {
+                startEvaluation();
+            }
+        });
+
+        document.getElementById('btn-go-to-rush').addEventListener('click', () => {
+            switchTab('rush');
+            document.getElementById('rush-result-card').style.display = 'none';
+        });
+
+        document.getElementById('btn-run-rush').addEventListener('click', () => {
+            // RUSH開始時も必要に応じて音声をリセット
+            stopAllSounds();
+
+            if (isSimulating) return;
+            const stats = updateRushStats();
+            if (!stats) return;
+
+            isSimulating = true;
+
+            document.getElementById('rush-card-status').innerText = "RUSHING...";
+            document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
+            document.getElementById('res-rush-count').innerText = "0";
+            document.getElementById('rush-result-card').style.display = 'block';
+
+            let rushCount = 1;
+            while (true) {
+                if (Math.random() >= stats.r) break;
+                rushCount++;
+                if (rushCount > 500) break;
+            }
+
+            const singlePayout = parseInt(payoutInput.value) || 0;
+            const totalPayout = rushCount * singlePayout;
+
+            const duration = Math.min(300 + (rushCount * 30), 1500);
+
+            const rushCountSpan = document.getElementById('res-rush-count');
+            const rushBox = document.getElementById('res-rush-box');
+            const payoutBox = document.getElementById('res-payout-box');
+            
+            rushBox.classList.remove('rush-count-animation');
+            if (payoutBox) payoutBox.classList.remove('rush-count-animation');
+
+            animateValue(rushCountSpan, 0, rushCount, duration, () => {
+                triggerFlash();
+                document.getElementById('rush-card-status').innerText = "RUSH RESULT";
+                document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
+                document.getElementById('rush-payout-box-element').style.visibility = 'visible';
                 
                 if (!skipEffectsCheckbox.checked) {
-                    countBox.classList.add('pop-animation');
+                    rushBox.classList.add('rush-count-animation');
+                    if (payoutBox) payoutBox.classList.add('rush-count-animation');
                 }
                 isSimulating = false;
             });
-        };
-
-        if (isFreezeActive) {
-            playFreezeSound();
-            freezeContainer.classList.add('freeze-active');
-
-            setTimeout(() => {
-                freezeContainer.classList.remove('freeze-active');
-                startEvaluation();
-            }, 1000);
-        } else {
-            startEvaluation();
-        }
-    });
-
-    document.getElementById('btn-go-to-rush').addEventListener('click', () => {
-        switchTab('rush');
-        document.getElementById('rush-result-card').style.display = 'none';
-    });
-
-    document.getElementById('btn-run-rush').addEventListener('click', () => {
-        if (isSimulating) return;
-        const stats = updateRushStats();
-        if (!stats) return;
-
-        isSimulating = true;
-
-        document.getElementById('rush-card-status').innerText = "RUSHING...";
-        document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
-        document.getElementById('res-rush-count').innerText = "0";
-        document.getElementById('rush-result-card').style.display = 'block';
-
-        let rushCount = 1;
-        while (true) {
-            if (Math.random() >= stats.r) break;
-            rushCount++;
-            if (rushCount > 500) break;
-        }
-
-        const singlePayout = parseInt(payoutInput.value) || 0;
-        const totalPayout = rushCount * singlePayout;
-
-        const duration = Math.min(300 + (rushCount * 30), 1500);
-
-        const rushCountSpan = document.getElementById('res-rush-count');
-        const rushBox = document.getElementById('res-rush-box');
-        const payoutBox = document.getElementById('res-payout-box');
-        
-        rushBox.classList.remove('rush-count-animation');
-        payoutBox.classList.remove('rush-count-animation');
-
-        animateValue(rushCountSpan, 0, rushCount, duration, () => {
-            triggerFlash();
-            document.getElementById('rush-card-status').innerText = "RUSH RESULT";
-            document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
-            document.getElementById('rush-payout-box-element').style.visibility = 'visible';
-            
-            if (!skipEffectsCheckbox.checked) {
-                rushBox.style.setProperty('--i', '1');
-                payoutBox.style.setProperty('--i', '2');
-                rushBox.classList.add('rush-count-animation');
-                payoutBox.classList.add('rush-count-animation');
-            }
-            isSimulating = false;
         });
-    });
 
-    updateNormalStats();
-    updateRushStats();
-});
+        // 初回読み込み時のテーブル初期化
+        updateNormalStats();
+        updateRushStats();
+    });
 </script>
 </body>
 </html>
