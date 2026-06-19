@@ -40,7 +40,7 @@
             font-size: 22px;
             font-weight: 900;
             text-align: center;
-            margin: 15px 0 20px 0;
+            margin: 15px 0 10px 0;
             letter-spacing: 3px;
             text-transform: uppercase;
             background: linear-gradient(90deg, var(--primary), var(--rush-color), var(--primary));
@@ -51,6 +51,70 @@
         }
         @keyframes shine {
             to { background-position: 200% center; }
+        }
+
+        /* カスタムスイッチ */
+        .mode-option-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+        .mode-option-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--sub-text);
+            cursor: pointer;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 16px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.25s ease;
+            user-select: none;
+        }
+        .mode-option-label:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--text);
+        }
+        
+        .mode-option-input {
+            display: none;
+        }
+        .custom-switch {
+            position: relative;
+            width: 38px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            transition: all 0.25s ease;
+        }
+        .custom-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+        
+        .mode-option-input:checked + .custom-switch {
+            background: var(--rush-color);
+            box-shadow: 0 0 12px var(--rush-glow);
+        }
+        .mode-option-input:checked + .custom-switch::after {
+            left: 20px;
+        }
+        .mode-option-label.is-active {
+            color: #ffffff;
+            border-color: rgba(255, 0, 85, 0.3);
+            background: rgba(255, 0, 85, 0.03);
         }
 
         /* 画面全体の衝撃フラッシュエフェクト */
@@ -139,9 +203,10 @@
         }
         input:focus { border-color: var(--primary); background: rgba(0,0,0,0.6); outline: none; box-shadow: 0 0 12px var(--primary-glow); }
         
-        .quick-buttons { display: flex; gap: 8px; margin-bottom: 22px; }
+        .quick-buttons { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
         .btn-sub {
             flex: 1;
+            min-width: 80px;
             padding: 11px;
             font-size: 12px;
             font-weight: 700;
@@ -176,8 +241,8 @@
         button.btn-rush { background: linear-gradient(135deg, #ff0044, #ff4500); box-shadow: 0 6px 20px var(--rush-glow); }
         button.btn-rush:active { box-shadow: 0 2px 10px var(--rush-glow); }
         
-        /* テーブル */
-        .table-container { max-height: 150px; overflow-y: auto; margin-top: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); }
+        /* テーブルコンテナ */
+        .table-container { max-height: 240px; overflow-y: auto; margin-top: 12px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); }
         .prob-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
         .prob-table th, .prob-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
         .prob-table th { background: rgba(255,255,255,0.03); color: var(--sub-text); font-weight: 800; position: sticky; top: 0; font-size: 11px; letter-spacing: 1px; }
@@ -224,6 +289,14 @@
 <div class="container">
     
     <h1>PACHINKO SIMULATOR</h1>
+
+    <div class="mode-option-container">
+        <label class="mode-option-label" id="mode-label" for="skip-effects">
+            <input type="checkbox" id="skip-effects" class="mode-option-input">
+            <div class="custom-switch"></div>
+            <span id="mode-text">演出ON (通常消化)</span>
+        </label>
+    </div>
     
     <div class="tabs">
         <button class="tab-btn active" id="tab-btn-normal" data-tab="normal">通常モード</button>
@@ -240,6 +313,7 @@
             <div class="quick-buttons">
                 <button class="btn-sub" id="btn-set-319">1/319.9</button>
                 <button class="btn-sub" id="btn-set-399">1/399.9</button>
+                <button class="btn-sub" id="btn-set-16384" style="color: var(--danger); border-color: rgba(255, 153, 0, 0.3);">1/16384</button>
             </div>
             <button class="btn-main" id="btn-run-normal">START CHANCE</button>
         </div>
@@ -248,9 +322,13 @@
             <p class="card-title" id="normal-card-status" style="color: var(--success); margin: 0; letter-spacing: 2px;">SIMULATING...</p>
             <div class="result-box" id="normal-box-element">
                 <div class="big-num color-win" id="res-count-box"><span id="res-count">0</span> <span style="font-size:22px; font-weight:800; text-shadow:none;">G</span></div>
+                
                 <div class="stat-grid" id="normal-stats-grid" style="visibility: hidden;">
                     <div>1000G超え: <span id="stat-over1000">--</span></div>
                     <div>目安投資: <span id="stat-investment">0</span>k</div>
+                    <div style="grid-column: span 2; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                        この回転数までの当選確率 (理論値): <span id="stat-hit-probability" style="color: var(--primary);">0.0%</span>
+                    </div>
                 </div>
             </div>
             <button class="btn-main btn-rush" id="btn-go-to-rush" style="margin-top: 18px; display: none;">RUSH MODE ENTER ➔</button>
@@ -320,12 +398,25 @@
         const normalTable = document.getElementById('normal-table-body');
         const rushTable = document.getElementById('rush-table-body');
         const flashScreen = document.getElementById('flash-screen');
+        
+        const skipEffectsCheckbox = document.getElementById('skip-effects');
+        const modeLabel = document.getElementById('mode-label');
+        const modeText = document.getElementById('mode-text');
 
-        // 音声ファイルの読み込み設定 (rise.mp3)
         const riseSound = new Audio('rise.mp3');
 
-        // 音声再生処理
+        skipEffectsCheckbox.addEventListener('change', () => {
+            if (skipEffectsCheckbox.checked) {
+                modeText.innerText = "演出OFF (高速消化)";
+                modeLabel.classList.add('is-active');
+            } else {
+                modeText.innerText = "演出ON (通常消化)";
+                modeLabel.classList.remove('is-active');
+            }
+        });
+
         function playPachinkoSound() {
+            if (skipEffectsCheckbox.checked) return;
             try {
                 riseSound.currentTime = 0;
                 riseSound.play().catch(e => console.log("Audio play blocked:", e));
@@ -334,15 +425,14 @@
             }
         }
 
-        // フラッシュ演出
         function triggerFlash() {
+            if (skipEffectsCheckbox.checked) return;
             flashScreen.classList.remove('flash-active');
             void flashScreen.offsetWidth; 
             flashScreen.classList.add('flash-active');
-            playPachinkoSound(); // 音声トリガー
+            playPachinkoSound();
         }
 
-        // タブ切り替え
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -357,13 +447,12 @@
             });
         });
 
-        // 統計更新処理
         function updateNormalStats() {
             const x = parseFloat(probInput.value);
             if (!x || x <= 0) return;
 
             let normalHtml = '';
-            for (let g = 100; g <= 1000; g += 100) {
+            for (let g = 100; g <= 2000; g += 100) {
                 const missRate = Math.pow(1 - (1 / x), g);
                 const hitRate = 1 - missRate;
                 normalHtml += `<tr><td>${g} G</td><td style="color:var(--danger);">${(missRate*100).toFixed(1)}%</td><td style="color:var(--primary); font-weight:700;">${(hitRate*100).toFixed(1)}%</td></tr>`;
@@ -393,18 +482,24 @@
         probInput.addEventListener('input', updateNormalStats);
         rushInput.addEventListener('input', updateRushStats);
 
+        // クイック選択イベント
         document.getElementById('btn-set-319').addEventListener('click', () => { probInput.value = "319.9"; updateNormalStats(); });
         document.getElementById('btn-set-399').addEventListener('click', () => { probInput.value = "399.9"; updateNormalStats(); });
+        document.getElementById('btn-set-16384').addEventListener('click', () => { probInput.value = "16384.0"; updateNormalStats(); });
         document.getElementById('btn-set-rush81').addEventListener('click', () => { rushInput.value = "81"; updateRushStats(); });
         document.getElementById('btn-set-rush75').addEventListener('click', () => { rushInput.value = "75"; updateRushStats(); });
 
-        // カウントアップ演出アニメーション関数
         function animateValue(element, start, end, duration, callback) {
+            if (skipEffectsCheckbox.checked) {
+                element.innerText = end.toLocaleString();
+                if (callback) callback();
+                return;
+            }
+
             let startTimestamp = null;
             const step = (timestamp) => {
                 if (!startTimestamp) startTimestamp = timestamp;
                 const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                // イージングをかけずにリニア（等速）でガガガガッと上げる
                 const current = Math.floor(progress * (end - start) + start);
                 element.innerText = current.toLocaleString();
                 if (progress < 1) {
@@ -417,10 +512,8 @@
             window.requestAnimationFrame(step);
         }
 
-        // ボタンの多重クリック防止用フラグ
         let isSimulating = false;
 
-        // ① 通常シミュレーション
         document.getElementById('btn-run-normal').addEventListener('click', () => {
             if (isSimulating) return;
             const stats = updateNormalStats();
@@ -428,7 +521,6 @@
 
             isSimulating = true;
             
-            // 演出初期化
             document.getElementById('normal-card-status').innerText = "SIMULATING...";
             document.getElementById('normal-stats-grid').style.visibility = 'hidden';
             document.getElementById('btn-go-to-rush').style.display = 'none';
@@ -440,10 +532,9 @@
             while (true) {
                 count++;
                 if (Math.random() < p) break;
-                if (count > 200000) break;
+                if (count > 200000) break; // 無限ループ安全弁
             }
 
-            // カウント数の多さに応じて演出時間を可変（MAX 1.2秒）
             const duration = Math.min(400 + (count * 0.5), 1200);
 
             const countSpan = document.getElementById('res-count');
@@ -451,10 +542,7 @@
             countBox.classList.remove('pop-animation');
 
             animateValue(countSpan, 0, count, duration, () => {
-                // カウントアップ完了（大当たり！）直後のタイミングでフラッシュと音
                 triggerFlash();
-                
-                // ステータスや投資額を遅れて表示
                 document.getElementById('normal-card-status').innerText = "BONUS ENCOUNTERED";
                 
                 const over1000Span = document.getElementById('stat-over1000');
@@ -466,11 +554,25 @@
                     over1000Span.style.color = "var(--success)";
                 }
                 
+                const actualHitRate = 1 - Math.pow(1 - p, count);
+                const probSpan = document.getElementById('stat-hit-probability');
+                probSpan.innerText = `${(actualHitRate * 100).toFixed(2)} %`;
+                
+                if (actualHitRate > 0.8) {
+                    probSpan.style.color = "var(--rush-color)";
+                } else if (actualHitRate < 0.3) {
+                    probSpan.style.color = "var(--success)";
+                } else {
+                    probSpan.style.color = "var(--primary)";
+                }
+
                 document.getElementById('stat-investment').innerText = Math.ceil(count / 18);
                 document.getElementById('normal-stats-grid').style.visibility = 'visible';
                 document.getElementById('btn-go-to-rush').style.display = 'block';
                 
-                countBox.classList.add('pop-animation');
+                if (!skipEffectsCheckbox.checked) {
+                    countBox.classList.add('pop-animation');
+                }
                 isSimulating = false;
             });
         });
@@ -480,7 +582,6 @@
             document.getElementById('rush-result-card').style.display = 'none';
         });
 
-        // ② RUSHシミュレーション
         document.getElementById('btn-run-rush').addEventListener('click', () => {
             if (isSimulating) return;
             const stats = updateRushStats();
@@ -488,7 +589,6 @@
 
             isSimulating = true;
 
-            // 演出初期化
             document.getElementById('rush-card-status').innerText = "RUSHING...";
             document.getElementById('rush-payout-box-element').style.visibility = 'hidden';
             document.getElementById('res-rush-count').innerText = "0";
@@ -504,7 +604,6 @@
             const singlePayout = parseInt(payoutInput.value) || 0;
             const totalPayout = rushCount * singlePayout;
 
-            // 連チャン数に応じた演出時間（MAX 1.5秒）
             const duration = Math.min(300 + (rushCount * 30), 1500);
 
             const rushCountSpan = document.getElementById('res-rush-count');
@@ -515,23 +614,22 @@
             payoutBox.classList.remove('rush-count-animation');
 
             animateValue(rushCountSpan, 0, rushCount, duration, () => {
-                // 連チャン終了（リザルト画面確定）直後のタイミングでフラッシュと音
                 triggerFlash();
-                
                 document.getElementById('rush-card-status').innerText = "RUSH RESULT";
                 document.getElementById('res-payout').innerText = totalPayout.toLocaleString();
                 document.getElementById('rush-payout-box-element').style.visibility = 'visible';
                 
-                rushBox.style.setProperty('--i', '1');
-                payoutBox.style.setProperty('--i', '2');
-                rushBox.classList.add('rush-count-animation');
-                payoutBox.classList.add('rush-count-animation');
+                if (!skipEffectsCheckbox.checked) {
+                    rushBox.style.setProperty('--i', '1');
+                    payoutBox.style.setProperty('--i', '2');
+                    rushBox.classList.add('rush-count-animation');
+                    payoutBox.classList.add('rush-count-animation');
+                }
                 
                 isSimulating = false;
             });
         });
 
-        // 初期実行
         updateNormalStats();
         updateRushStats();
     });
